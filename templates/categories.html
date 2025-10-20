@@ -1,20 +1,25 @@
 {% extends "base.html" %}
 
 {% block content %}
+<h1 class="h2 mb-4">Gerenciar Categorias</h1>
 <div class="row">
-    <div class="col-md-4">
-        <h3>Adicionar Nova Categoria</h3>
-        <form method="POST" action="{{ url_for('manage_categories') }}">
-            <div class="mb-3">
-                <label for="category_name" class="form-label">Nome da Categoria</label>
-                <input type="text" class="form-control" id="category_name" name="category_name" required>
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Adicionar Nova Categoria</h5>
+                <form method="POST" action="{{ url_for('manage_categories') }}">
+                    <div class="mb-3">
+                        <label for="category_name" class="form-label">Nome da Categoria</label>
+                        <input type="text" class="form-control" id="category_name" name="category_name" required>
+                    </div>
+                    <button typeS="submit" class="btn btn-primary">Adicionar</button>
+                </form>
             </div>
-            <button type="submit" class="btn btn-primary">Adicionar</button>
-        </form>
+        </div>
     </div>
 
-    <div class="col-md-8">
-        <h3>Categorias Existentes</h3>
+    <div class="col-md-7">
+        <h5 class="mb-3">Categorias Existentes</h5>
         {% if categories %}
             <ul class="list-group">
                 {% for category in categories %}
@@ -27,7 +32,7 @@
                 {% endfor %}
             </ul>
         {% else %}
-            <p>Nenhuma categoria cadastrada.</p>
+            <p class="text-muted">Nenhuma categoria cadastrada.</p>
         {% endif %}
     </div>
 </div>

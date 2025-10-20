@@ -1,0 +1,23 @@
+<a href="{{ url_for('ticket_detail', ticket_id=ticket.id) }}" class="ticket-card-link">
+    <div class="card ticket-card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="badge me-2" style="background-color: var(--bs-primary-light); color: var(--bs-primary);">
+                        #{{ ticket.id }}
+                    </span>
+                    <span class="badge bg-secondary">{{ ticket.status }}</span>
+                </div>
+                <form method="POST" action="{{ url_for('hide_ticket' if not ticket.is_hidden else 'unhide_ticket', ticket_id=ticket.id) }}"
+                      onclick="event.stopPropagation();"> <button type="submit" class="btn btn-sm btn-link text-muted p-0"
+                            title="{{ 'Ocultar chamado' if not ticket.is_hidden else 'Reexibir chamado' }}">
+                        <i class="bi {{ 'bi-eye-slash' if not ticket.is_hidden else 'bi-eye' }}"></i>
+                    </button>
+                </form>
+            </div>
+            <h5 class="card-title mt-2 mb-1">{{ ticket.title }}</h5>
+            <p class="card-text text-muted-clamp">{{ description }}</p>
+            <small class="text-muted">Responsável: {{ ticket.responsible_name }}</small>
+        </div>
+    </div>
+</a>

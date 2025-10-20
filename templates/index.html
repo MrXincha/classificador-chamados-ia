@@ -1,32 +1,191 @@
 {% extends "base.html" %}
 
 {% block content %}
+<h1 class="h2 mb-4">{{ greeting }}, {{ current_user.first_name }}!</h1>
+
 <div class="row">
-    <div class="col-md-5">
-        <h3>Abrir Novo Chamado</h3>
-        <form method="POST" action="{{ url_for('index') }}">
-            <div class="mb-3">
-                <label for="description" class="form-label">Descreva o seu problema:</label>
-                <textarea class="form-control" id="description" name="description" rows="5" required></textarea>
+    <div class="col-lg-7">
+        <h3 class="h5 mb-3">Seus Chamados</h3>
+
+        <ul class="nav nav-tabs" id="ticketTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="open-tab" data-bs-toggle="tab" data-bs-target="#open-tickets" type="button" role="tab" aria-controls="open-tickets" aria-selected="true">Abertos</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="resolved-tab" data-bs-toggle="tab" data-bs-target="#resolved-tickets" type="button" role="tab" aria-controls="resolved-tickets" aria-selected="false">Resolvidos</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="hidden-tab" data-bs-toggle="tab" data-bs-target="#hidden-tickets" type="button" role="tab" aria-controls="hidden-tickets" aria-selected="false">Ocultos</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="ticketTabsContent">
+            <div class="tab-pane fade show active" id="open-tickets" role="tabpanel" aria-labelledby="open-tab">
+                {% if open_tickets %}
+                    {% for ticket, description in open_tickets %}
+                        {% include 'ticket_card.html' %}
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted p-3">Você não tem nenhum chamado aberto.</p>
+                {% endif %}
             </div>
-            <button type="submit" class="btn btn-primary">Criar e Classificar Chamado</button>
-        </form>
+            <div class="tab-pane fade" id="resolved-tickets" role="tabpanel" aria-labelledby="resolved-tab">
+                {% if resolved_tickets %}
+                    {% for ticket, description in resolved_tickets %}
+                        {% include 'ticket_card.html' %}
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted p-3">Nenhum chamado resolvido recentemente.</p>
+                {% endif %}
+            </div>
+            <div class="tab-pane fade" id="hidden-tickets" role="tabpanel" aria-labelledby="hidden-tab">
+                 {% if hidden_tickets %}
+                    {% for ticket, description in hidden_tickets %}
+                        {% include 'ticket_card.html' %}
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted p-3">Nenhum chamado oculto.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
-    <div class="col-md-7">
-        <h3>Meus Chamados</h3>
-        {% if tickets %}
-            <ul class="list-group">
-                {% for ticket in tickets %}
-                    <li class="list-group-item">
-                        <p>{{ ticket.description }}</p>
-                        <small class="text-muted">Categoria: <span class="badge bg-secondary">{{ ticket.category }}</span></small>
-                    </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>Você ainda não abriu nenhum chamado.</p>
-        {% endif %}
+    <div class="col-lg-5">
+        <h3 class="h5 mb-3">Assistente Virtual</h3>
+        
+        <div class="chat-container-component">
+            <div class="chat-window" id="chat-window">
+                <div class="message bot-message">
+                    <p>Pronto para ajudar! Descreva seu problema ou solicitação abaixo.</p>
+                </div>
+            </div>
+            <form class="chat-input-form" id="chat-form">
+                <input type="text" id="message-input" class="form-control" placeholder="Descreva seu problema..." autocomplete="off">
+                <button type="submit" class="btn btn-primary" id="send-button">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </form>
+        </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const openTicketsTab = document.getElementById('open-tickets');
+
+        // --- Função 1: Adicionar Mensagem na Tela ---
+        function addMessage(message, sender, allowHTML = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', `${sender}-message`);
+            const p = document.createElement('p');
+            if (allowHTML) {
+                p.innerHTML = message;
+            } else {
+                p.textContent = message;
+            }
+            messageDiv.appendChild(p);
+            chatWindow.appendChild(messageDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        // --- Função 2: Adicionar Botões de Sim/Não ---
+        function addFollowUpButtons(followUpText, originalMessage) {
+            addMessage(followUpText, 'bot');
+            
+            const buttonDiv = document.createElement('div');
+            buttonDiv.classList.add('message', 'bot-message');
+            buttonDiv.innerHTML = `
+                <div class="follow-up-buttons">
+                    <button class="btn btn-sm btn-outline-success" data-response="sim">Sim, resolveu!</button>
+                    <button class="btn btn-sm btn-danger" data-response="nao">Não, abra um chamado</button>
+                </div>
+            `;
+            chatWindow.appendChild(buttonDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            buttonDiv.querySelectorAll('.btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const userResponse = button.getAttribute('data-response');
+                    if (userResponse === 'sim') {
+                        addMessage("Sim, resolveu!", 'user');
+                        addMessage("Ótimo! Fico feliz em ajudar. Estou aqui se precisar de mais alguma coisa.", 'bot');
+                        buttonDiv.remove();
+                    } else {
+                        addMessage("Não, abra um chamado", 'user');
+                        addMessage("Ok, vou abrir um chamado para você. Um momento...", 'bot');
+                        handleChatSubmit(originalMessage, true);
+                        buttonDiv.remove();
+                    }
+                });
+            });
+        }
+        
+        // --- Função 3: Atualizar a Lista de Chamados (O Auto-Reload) ---
+        async function refreshOpenTickets() {
+            try {
+                const response = await fetch("{{ url_for('index') }}");
+                const htmlString = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlString, 'text/html');
+                const newOpenTicketsContent = doc.getElementById('open-tickets').innerHTML;
+                openTicketsTab.innerHTML = newOpenTicketsContent;
+            } catch (error) {
+                console.error('Erro ao atualizar lista de chamados:', error);
+            }
+        }
+
+        // --- Função 4: O "Cérebro" do Envio (v4.5 - Com Clarificação) ---
+        async function handleChatSubmit(message, forceTicket = false) {
+            try {
+                const response = await fetch("{{ url_for('chat') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, force_ticket: forceTicket }),
+                });
+                if (!response.ok) throw new Error('Erro no servidor');
+
+                const data = await response.json();
+
+                // Decide o que fazer com a resposta da IA
+                if (data.action === 'propose_solution') {
+                    addMessage(data.solution_html, 'bot', true);
+                    addFollowUpButtons(data.follow_up, message);
+
+                } else if (data.action === 'ticket_created') {
+                    addMessage(data.response, 'bot');
+                    refreshOpenTickets();
+
+                // --- NOVA LÓGICA ---
+                } else if (data.action === 'clarification_needed') {
+                    addMessage(data.response, 'bot');
+                    // Apenas exibe a pergunta, não faz mais nada. Espera a próxima mensagem do usuário.
+                // ---------------------
+
+                } else {
+                    // Resposta padrão (erro, conversa normal sem ação específica)
+                    addMessage(data.response, 'bot');
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+                addMessage('Desculpe, estou com um problema de conexão. Tente novamente.', 'bot');
+            }
+        }
+
+        // Evento principal de envio do formulário
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userMessage = messageInput.value.trim();
+            if (!userMessage) return;
+
+            addMessage(userMessage, 'user');
+            messageInput.value = '';
+            
+            handleChatSubmit(userMessage, false); 
+        });
+    });
+</script>
 {% endblock %}

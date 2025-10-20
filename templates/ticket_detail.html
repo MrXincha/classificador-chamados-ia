@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h2">Chamado #{{ ticket.id }}: {{ ticket.title }}</h1>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar para o Hub
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Detalhes</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <strong>Status:</strong><br>
+                <span class="badge fs-6 {{ 'bg-success' if ticket.status in ['Resolvido', 'Fechado'] else 'bg-warning text-dark' }}">{{ ticket.status }}</span>
+            </div>
+            <div class="col-md-4">
+                <strong>Prioridade:</strong><br>
+                <span class="fs-6">{{ ticket.priority }}</span>
+            </div>
+            <div class="col-md-4">
+                <strong>Responsável:</strong><br>
+                <span class="fs-6">{{ ticket.responsible_name }}</span>
+            </div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-md-4">
+                <strong>Categoria:</strong><br>
+                {{ ticket.category_obj.name }}
+            </div>
+            <div class="col-md-4">
+                <strong>Criado em:</strong><br>
+                {{ ticket.created_at.strftime('%d/%m/%Y às %H:%M') }}
+            </div>
+            <div class="col-md-4">
+                <strong>Última Atualização:</strong><br>
+                {{ ticket.updated_at.strftime('%d/%m/%Y às %H:%M') }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <h3 class="h5 mb-3">Histórico de Comentários</h3>
+        <div class="comments-list">
+            {% for comment in comments %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <p class="card-text">{{ comment.description }}</p>
+                </div>
+                <div class="card-footer text-muted d-flex justify-content-between">
+                    <span>Por: <strong>{{ comment.author.first_name }} {{ comment.author.last_name }}</strong></span>
+                    <span>{{ comment.created_at.strftime('%d/%m/%Y às %H:%M') }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card" style="position: sticky; top: 2rem;">
+            <div class="card-body">
+                <h5 class="card-title">Adicionar Atualização</h5>
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="comment_text" class="form-label">Novo Comentário (limite 5000 caracteres)</label>
+                        <textarea class="form-control" id="comment_text" name="comment_text" rows="5" maxlength="5000"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="attachment_file" class="form-label">Adicionar Anexo</label>
+                        <input class="form-control" type="file" id="attachment_file" name="attachment_file">
+                        <small class="form-text text-muted">Lim_ite: 16MB. Tipos: png, jpg, pdf, txt, zip.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Enviar Atualização</button>
+                </form>
+            </div>
+            
+            {% if attachments %}
+            <div class="card-body border-top">
+                <h6 class="card-title">Anexos</h6>
+                <ul class="list-group list-group-flush">
+                    {% for file in attachments %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ file.original_filename }}
+                        <a href="{{ url_for('download_attachment', filename=file.storage_filename) }}" class="btn btn-sm btn-outline-primary" title="Baixar">
+                            <i class="bi bi-download"></i>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

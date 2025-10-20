@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h2 mb-4">Meus Chamados</h1>
+<div class="card">
+    <div class="card-body">
+        {% if tickets %}
+            <div class="mt-3">
+                {% for ticket, description in tickets %}
+                    {% include 'ticket_card.html' %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted p-3">Você ainda não criou nenhum chamado.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
