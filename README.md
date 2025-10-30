@@ -57,8 +57,8 @@ Siga estes passos para configurar e rodar o projeto na sua máquina:
 
 1.  **Clone o repositório:**
     ```bash
-    git clone [https://github.com/](https://github.com/)[SEU-USUARIO-GITHUB]/[NOME-DO-REPOSITORIO].git
-    cd [NOME-DO-REPOSITORIO]
+    git clone [https://github.com/](https://github.com/)[MrXincha/classificador-chamados-ia].git
+    cd [ControlAI]
     ```
 
 2.  **Crie e ative um ambiente virtual:**
