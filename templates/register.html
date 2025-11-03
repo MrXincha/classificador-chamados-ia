@@ -2,8 +2,15 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
-        <h2 class="mb-4">Criar sua Conta</h2>
-        <form method="POST" action="{{ url_for('register') }}" class="needs-validation" novalidate>
+        <div class="card shadow-lg border-0" style="border-radius: 1rem;">
+            <div class="card-body p-4 p-md-5">
+
+                <div class="text-center mb-4">
+                    <img src="{{ url_for('static', filename='img/logo-completo-cor.png') }}" alt="ControlAI Logo" style="height: 140px;">
+                </div>
+
+                <h2 class="mb-4 text-center">Criar sua Conta</h2>
+                <form method="POST" action="{{ url_for('register') }}" class="needs-validation" novalidate>
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label for="first_name" class="form-label">Nome</label>
@@ -38,5 +45,7 @@
         </form>
          <p class="mt-3 text-center">Já tem uma conta? <a href="{{ url_for('login') }}">Faça o login</a>.</p>
     </div>
+</div>
+</div>
 </div>
 {% endblock %}

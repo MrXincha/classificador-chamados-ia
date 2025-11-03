@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="h2 mb-4">Fila de Chamados do Agente</h1>
+
+<h3 class="h5 mb-3">Atribuídos a Mim ({{ assigned_to_me|length }})</h3>
+<div class="card mb-4">
+    <div class="card-body">
+        {% if assigned_to_me %}
+            <div class="list-group list-group-flush">
+                {% for ticket in assigned_to_me %}
+                    {% set show_assign_button = False %}
+                    {% include 'ticket_card.html' %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted p-3">Você não tem nenhum chamado atribuído.</p>
+        {% endif %}
+    </div>
+</div>
+
+<h3 class="h5 mb-3">Não Atribuídos ({{ unassigned_tickets|length }})</h3>
+<div class="card">
+    <div class="card-body">
+        {% if unassigned_tickets %}
+            <div class="list-group list-group-flush">
+                {% for ticket in unassigned_tickets %}
+                    {% set show_assign_button = True %}
+                    {% include 'ticket_card.html' %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted p-3">Nenhum chamado na fila não atribuída.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

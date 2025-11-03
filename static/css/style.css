@@ -79,9 +79,11 @@ body {
 }
 
 .sidebar-nav .nav-link i {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     margin-right: 0.75rem;
-    width: 20px;
+    width: 24px;
+    text-align: center;
+    vertical-align: middle;
 }
 
 .sidebar-nav .nav-link:hover {
@@ -185,3 +187,60 @@ body {
 .comments-list .card-body .card-text {
     white-space: pre-wrap;
 }
+
+.sidebar-footer {
+    margin-top: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 1rem;
+    position: relative; /* <-- ESSA É A CHAVE! */
+}
+
+.user-menu .user-dropdown {
+    display: none; /* Escondido por padrão */
+    position: absolute; /* FAZ O MENU "FLUTUAR" */
+    bottom: 100%; /* Posiciona ele ACIMA do rodapé */
+    left: 0;
+    right: 0;
+    z-index: 101; /* Garante que ele fique NA FRENTE da sidebar (que é 100) */
+
+    /* Estilos visuais */
+    background-color: #2a3b4c; /* Um pouco mais claro que o fundo da sidebar */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.375rem;
+    margin-bottom: 0.5rem; /* Um espaço entre o menu e o botão "Lucas" */
+    list-style: none;
+    padding: 0.5rem;
+}
+
+.user-menu:hover .user-dropdown,
+.user-menu:focus-within .user-dropdown {
+    display: block; /* Mostra o menu */
+}
+
+.user-dropdown .dropdown-item {
+    color: #adb5bd;
+    text-decoration: none;
+    display: block;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.user-dropdown .dropdown-item:hover {
+    background-color: var(--bs-primary);
+    color: #fff;
+}
+
+/* ----- 6. Estilos de Logo ----- */
+
+/* Logo para a barra lateral (Página Inicial) */
+.logo-sidebar {
+    height: 140px; /* <--- Aumentado de 100px para 140px */
+    width: auto;
+    object-fit: contain; /* Impede que a imagem distorça */
+/* ... existing code ... */
+/* Logo para a página de Login */
+.logo-login {
+    width: 300px; /* <--- Aumentado de 250px para 300px */
+    height: auto;
+    object-fit: contain;

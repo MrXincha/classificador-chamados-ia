@@ -5,7 +5,7 @@
     <div class="card-body">
         {% if tickets %}
             <div class="mt-3">
-                {% for ticket, description in tickets %}
+                {% for ticket in tickets %}
                     {% include 'ticket_card.html' %}
                 {% endfor %}
             </div>

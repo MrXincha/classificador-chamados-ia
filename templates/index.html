@@ -22,7 +22,7 @@
         <div class="tab-content" id="ticketTabsContent">
             <div class="tab-pane fade show active" id="open-tickets" role="tabpanel" aria-labelledby="open-tab">
                 {% if open_tickets %}
-                    {% for ticket, description in open_tickets %}
+                    {% for ticket in open_tickets %}
                         {% include 'ticket_card.html' %}
                     {% endfor %}
                 {% else %}
@@ -31,7 +31,7 @@
             </div>
             <div class="tab-pane fade" id="resolved-tickets" role="tabpanel" aria-labelledby="resolved-tab">
                 {% if resolved_tickets %}
-                    {% for ticket, description in resolved_tickets %}
+                    {% for ticket in resolved_tickets %}
                         {% include 'ticket_card.html' %}
                     {% endfor %}
                 {% else %}
@@ -40,7 +40,7 @@
             </div>
             <div class="tab-pane fade" id="hidden-tickets" role="tabpanel" aria-labelledby="hidden-tab">
                  {% if hidden_tickets %}
-                    {% for ticket, description in hidden_tickets %}
+                    {% for ticket in hidden_tickets %}
                         {% include 'ticket_card.html' %}
                     {% endfor %}
                 {% else %}
@@ -137,7 +137,7 @@
             }
         }
 
-        // --- Função 4: O "Cérebro" do Envio (v4.5 - Com Clarificação) ---
+        // --- Função 4: O "Cérebro" do Envio ---
         async function handleChatSubmit(message, forceTicket = false) {
             try {
                 const response = await fetch("{{ url_for('chat') }}", {
@@ -158,11 +158,8 @@
                     addMessage(data.response, 'bot');
                     refreshOpenTickets();
 
-                // --- NOVA LÓGICA ---
                 } else if (data.action === 'clarification_needed') {
                     addMessage(data.response, 'bot');
-                    // Apenas exibe a pergunta, não faz mais nada. Espera a próxima mensagem do usuário.
-                // ---------------------
 
                 } else {
                     // Resposta padrão (erro, conversa normal sem ação específica)

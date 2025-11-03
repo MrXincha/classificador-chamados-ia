@@ -16,7 +16,12 @@
         <div class="row">
             <div class="col-md-4">
                 <strong>Status:</strong><br>
-                <span class="badge fs-6 {{ 'bg-success' if ticket.status in ['Resolvido', 'Fechado'] else 'bg-warning text-dark' }}">{{ ticket.status }}</span>
+                <span class="badge fs-6
+                    {% if ticket.status == 'Resolvido' or ticket.status == 'Fechado' %} bg-success
+                    {% elif ticket.status == 'Em Andamento' %} bg-primary
+                    {% elif ticket.status == 'Pendente' %} bg-secondary
+                    {% else %} bg-warning text-dark {% endif %}
+                ">{{ ticket.status }}</span>
             </div>
             <div class="col-md-4">
                 <strong>Prioridade:</strong><br>
@@ -24,7 +29,13 @@
             </div>
             <div class="col-md-4">
                 <strong>Responsável:</strong><br>
-                <span class="fs-6">{{ ticket.responsible_name }}</span>
+                <span class="fs-6">
+                    {% if ticket.responsible_agent %}
+                        {{ ticket.responsible_agent.first_name }} {{ ticket.responsible_agent.last_name }}
+                    {% else %}
+                        <span class="text-danger">Não Atribuído</span>
+                    {% endif %}
+                </span>
             </div>
         </div>
         <hr>
@@ -49,22 +60,77 @@
     <div class="col-lg-7">
         <h3 class="h5 mb-3">Histórico de Comentários</h3>
         <div class="comments-list">
+
+            <!-- ======================================================= -->
+            <!-- INÍCIO DA MUDANÇA (LÓGICA DE NOTA INTERNA) -->
+            <!-- ======================================================= -->
             {% for comment in comments %}
-            <div class="card mb-3">
+
+            <!--
+              O comentário SÓ é exibido se:
+              1. NÃO for interno (comment.is_internal == False)
+              2. OU se o usuário logado for um agente.
+            -->
+            {% if not comment.is_internal or current_user.is_agent %}
+            <div class="card mb-3 {% if comment.is_internal %}border-warning bg-light{% endif %}">
                 <div class="card-body">
-                    <p class="card-text">{{ comment.description }}</p>
+
+                    <!-- Se for nota interna, adiciona um aviso para o agente -->
+                    {% if comment.is_internal %}
+                        <small class="text-muted float-end">
+                            <i class="bi bi-eye-slash-fill"></i> Nota Interna
+                        </small>
+                    {% endif %}
+
+                    <p class="card-text" style="white-space: pre-wrap;">{{ comment.description }}</p>
                 </div>
                 <div class="card-footer text-muted d-flex justify-content-between">
                     <span>Por: <strong>{{ comment.author.first_name }} {{ comment.author.last_name }}</strong></span>
                     <span>{{ comment.created_at.strftime('%d/%m/%Y às %H:%M') }}</span>
                 </div>
             </div>
+            {% endif %}
+
             {% endfor %}
+            <!-- ======================================================= -->
+            <!-- FIM DA MUDANÇA -->
+            <!-- ======================================================= -->
+
         </div>
     </div>
 
     <div class="col-lg-5">
+
+        <!-- Bloco de Revisão do Usuário (Inalterado) -->
+        {% if current_user.id == ticket.user_id and not current_user.is_agent and ticket.status == 'Resolvido' %}
+        <div class="card mb-4 border-primary shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Ação Requerida</h5>
+            </div>
+            <div class="card-body text-center">
+                <p>O agente marcou este chamado como resolvido. O problema foi solucionado?</p>
+
+                <form action="{{ url_for('user_review_ticket', ticket_id=ticket.id) }}" method="POST" class="mb-2">
+                    <input type="hidden" name="new_status" value="Fechado">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check-lg"></i> Sim, confirmar e fechar
+                    </button>
+                </form>
+                <form action="{{ url_for('user_review_ticket', ticket_id=ticket.id) }}" method="POST">
+                    <input type="hidden" name="new_status" value="Em Andamento">
+                    <button type="submit" class="btn btn-warning text-dark w-100">
+                        <i class="bi bi-arrow-clockwise"></i> Não, reabrir o chamado
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- O card 'sticky' -->
         <div class="card" style="position: sticky; top: 2rem;">
+
+            <!-- Formulário de Atualização (Só aparece se 'can_post' for True) -->
+            {% if can_post %}
             <div class="card-body">
                 <h5 class="card-title">Adicionar Atualização</h5>
                 <form method="POST" enctype="multipart/form-data">
@@ -75,14 +141,32 @@
                     <div class="mb-3">
                         <label for="attachment_file" class="form-label">Adicionar Anexo</label>
                         <input class="form-control" type="file" id="attachment_file" name="attachment_file">
-                        <small class="form-text text-muted">Lim_ite: 16MB. Tipos: png, jpg, pdf, txt, zip.</small>
+                        <small class="form-text text-muted">Limite: 16MB. Tipos: png, jpg, pdf, txt, zip.</small>
                     </div>
+
+                    <!-- ======================================================= -->
+                    <!-- INÍCIO DA MUDANÇA (CHECKBOX NOTA INTERNA) -->
+                    <!-- ======================================================= -->
+                    <!-- O checkbox só aparece se o usuário for um agente -->
+                    {% if current_user.is_agent %}
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_internal" id="is_internal">
+                        <label class="form-check-label" for="is_internal">
+                            Nota interna (visível apenas para agentes)
+                        </label>
+                    </div>
+                    {% endif %}
+                    <!-- ======================================================= -->
+                    <!-- FIM DA MUDANÇA -->
+                    <!-- ======================================================= -->
+
                     <button type="submit" class="btn btn-primary w-100">Enviar Atualização</button>
                 </form>
             </div>
-            
+            {% endif %}
+
             {% if attachments %}
-            <div class="card-body border-top">
+            <div class="card-body {% if can_post %}border-top{% endif %}">
                 <h6 class="card-title">Anexos</h6>
                 <ul class="list-group list-group-flush">
                     {% for file in attachments %}
@@ -96,7 +180,53 @@
                 </ul>
             </div>
             {% endif %}
+        </div> <!-- Fim do card sticky -->
+
+
+        <!-- Bloco de Ações do Agente -->
+        {% if current_user.is_agent and current_user.id == ticket.responsible_user_id %}
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">Ações do Agente</h5>
+
+                <!-- Botão de Resolução -->
+                <form action="{{ url_for('agent_update_status', ticket_id=ticket.id) }}" method="POST" class="mb-2">
+                    <input type="hidden" name="new_status" value="Resolvido">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check-circle-fill"></i> Marcar como Resolvido
+                    </button>
+                </form>
+
+                <!-- Botões Secundários -->
+                <div class="d-flex justify-content-between mb-2">
+                    <form action="{{ url_for('agent_update_status', ticket_id=ticket.id) }}" method="POST" class="me-1" style="flex-grow: 1;">
+                        <input type="hidden" name="new_status" value="Em Andamento">
+                        <button type="submit" class="btn btn-warning btn-sm w-100">Em Andamento</button>
+                    </form>
+                    <form action="{{ url_for('agent_update_status', ticket_id=ticket.id) }}" method="POST" class="ms-1" style="flex-grow: 1;">
+                        <input type="hidden" name="new_status" value="Pendente">
+                        <button type="submit" class="btn btn-secondary btn-sm w-100">Pendente</button>
+                    </form>
+                </div>
+
+                <!-- ======================================================= -->
+                <!-- INÍCIO DA MUDANÇA (BOTÃO DEVOLVER) -->
+                <!-- ======================================================= -->
+                <hr>
+                <form action="{{ url_for('agent_unassign_ticket', ticket_id=ticket.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja devolver este chamado para a fila?');">
+                    <button type="submit" class="btn btn-outline-danger w-100 btn-sm">
+                        <i class="bi bi-arrow-return-left"></i> Devolver à Fila
+                    </button>
+                </form>
+                <!-- ======================================================= -->
+                <!-- FIM DA MUDANÇA -->
+                <!-- ======================================================= -->
+            </div>
         </div>
-    </div>
-</div>
+        {% endif %}
+
+
+    </div> <!-- Fim do col-lg-5 -->
+</div> <!-- Fim do row -->
 {% endblock %}
+

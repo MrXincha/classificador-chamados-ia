@@ -3,34 +3,55 @@
 {% block body_content %}
 <div class="dashboard-container">
     <nav class="sidebar">
-        <div class="sidebar-header">
-            <a href="{{ url_for('index') }}" class="sidebar-brand">Assistente IA</a>
+        <div class="sidebar-header" style="padding: 0.75rem;"> <a href="{{ url_for('index') }}" class="sidebar-brand">
+                <img src="{{ url_for('static', filename='img/icone-branco.png') }}" alt="ControlAI Logo" style="height: 60px;">
+                <span style="font-size: 1.25rem; vertical-align: middle; margin-left: 10px;">ControlAI</span>
+            </a>
         </div>
+
         <ul class="sidebar-nav">
+
+        <li class="nav-item">
+            <a href="{{ url_for('index') }}" class="nav-link {{ 'active' if active_page == 'hub' else '' }}">
+                <i class="bi bi-house-door-fill"></i>
+                <span>Início (Hub)</span>
+            </a>
+        </li>
+            {% if current_user.is_agent %}
+        <li class="nav-item">
+            <a href="{{ url_for('agent_queue') }}" class="nav-link {{ 'active' if active_page == 'queue' else '' }}">
+                <i class="bi bi-inbox-fill"></i>
+                <span>Fila de Chamados</span>
+            </a>
+        </li>
+        {% endif %}
+        <li class="nav-item">
+            <a href="{{ url_for('my_tickets') }}" class="nav-link {{ 'active' if active_page == 'my_tickets' else '' }}">
+                <i class="bi bi-ticket-detailed-fill"></i>
+                <span>Meus Chamados</span>
+            </a>
+        </li>
+        {% if current_user.is_agent %}
             <li class="nav-item">
-                <a href="{{ url_for('index') }}" class="nav-link active">
-                    <i class="bi bi-house-door-fill"></i>
-                    <span>Início (Hub)</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ url_for('my_tickets') }}" class="nav-link"> <i class="bi bi-ticket-detailed-fill"></i>
-                    <span>Meus Chamados</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ url_for('manage_categories') }}" class="nav-link">
+                <a href="{{ url_for('manage_categories') }}" class="nav-link {{ 'active' if active_page == 'categories' else '' }}">
                     <i class="bi bi-gear-fill"></i>
                     <span>Categorias</span>
                 </a>
             </li>
-        </ul>
+            {% endif %}
+
+
+
+    </ul>
+
         <div class="sidebar-footer">
-            <div class="dropdown">
+            <div class="dropdown dropup">
                 <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <strong>{{ current_user.first_name }}</strong>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-dark text-small shadow">
+                    <li><a class="dropdown-item" href="{{ url_for('profile') }}">Meu Perfil</a></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="{{ url_for('logout') }}">Sair (Logout)</a></li>
                 </ul>
             </div>

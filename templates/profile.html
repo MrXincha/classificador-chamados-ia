@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="h2 mb-4">Meu Perfil</h1>
+
+<div class="row">
+    <!-- Coluna 1: Detalhes do Perfil -->
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Detalhes do Perfil</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('profile') }}">
+                    <!-- Campo oculto para identificar o formulário -->
+                    <input type="hidden" name="form_type" value="update_details">
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email (Não pode ser alterado)</label>
+                        <input type="email" class="form-control" id="email" value="{{ current_user.email }}" disabled readonly>
+                        <small class="text-muted">Seu email é seu nome de usuário e não pode ser alterado.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">Nome</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ current_user.first_name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Sobrenome</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" value="{{ current_user.last_name }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coluna 2: Alterar Senha -->
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Alterar Senha</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('profile') }}">
+                    <!-- Campo oculto para identificar o formulário -->
+                    <input type="hidden" name="form_type" value="update_password">
+                    
+                    <div class="mb-3">
+                        <label for="old_password" class="form-label">Senha Antiga</label>
+                        <input type="password" class="form-control" id="old_password" name="old_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">Nova Senha</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">Confirmar Nova Senha</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Alterar Senha</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
