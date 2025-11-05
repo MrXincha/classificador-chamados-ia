@@ -24,6 +24,7 @@ migrate = Migrate(app, db)
 
 
 def allowed_file(filename):
+    """Verifica se a extensão do arquivo é permitida."""
     return '.' in filename and \
         filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -32,39 +33,48 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-with app.app_context():
-    if Category.query.first() is None:
-        print("Detectado banco de dados de categorias vazio. Populando com dados básicos...")
 
-        basic_categories = [
-            "Incidente - Hardware",
-            "Incidente - Software / Aplicações",
-            "Incidente - Rede e Conectividade",
-            "Incidente - Contas e Acessos",
-            "Incidente - Periféricos",
-            "Incidente - Facilities / Manutenção Predial",
-            "Requisição - Hardware",
-            "Requisição - Software / Aplicações",
-            "Requisição - Contas e Acessos"
-        ]
+@app.cli.command("seed-db")
+def seed_db_command():
+    """Popula o banco de dados com categorias básicas."""
+    # Garante que o contexto da aplicação esteja ativo
+    with app.app_context():
+        if Category.query.first() is None:
+            print("Detectado banco de dados de categorias vazio. Populando com dados básicos...")
 
-        # Adiciona cada categoria ao banco de dados
-        for cat_name in basic_categories:
-            new_category = Category(name=cat_name)
-            db.session.add(new_category)
+            basic_categories = [
+                "Incidente - Hardware",
+                "Incidente - Software / Aplicações",
+                "Incidente - Rede e Conectividade",
+                "Incidente - Contas e Acessos",
+                "Incidente - Periféricos",
+                "Incidente - Facilities / Manutenção Predial",
+                "Requisição - Hardware",
+                "Requisição - Software / Aplicações",
+                "Requisição - Contas e Acessos"
+            ]
 
-        # Salva todas as novas categorias no banco
-        db.session.commit()
-        print("Categorias básicas populadas com sucesso!")
+            # Adiciona cada categoria ao banco de dados
+            for cat_name in basic_categories:
+                new_category = Category(name=cat_name)
+                db.session.add(new_category)
+
+            # Salva todas as novas categorias no banco
+            db.session.commit()
+            print("Categorias básicas populadas com sucesso!")
+        else:
+            print("Categorias já existem, pulando o seeding.")
 
 
 @login_manager.user_loader
 def load_user(user_id):
+    """Carrega o usuário logado da sessão."""
     return User.query.get(int(user_id))
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """Rota de login do usuário."""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     if request.method == 'POST':
@@ -81,6 +91,7 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """Rota de registro de novo usuário."""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     if request.method == 'POST':
@@ -128,28 +139,41 @@ def register():
 
         return redirect(url_for('login'))
 
-    return render_template('register.html')  #
+    return render_template('register.html')
 
 
 @app.route('/logout')
 @login_required
 def logout():
+    """Rota de logout do usuário."""
     logout_user()
     return redirect(url_for('login'))
 
 
-# --- NOVA ROTA DE PERFIL ---
+# --- ROTA DE PERFIL ---
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
+    """Exibe e processa o formulário da página de perfil."""
     if request.method == 'POST':
         # Verifica qual formulário foi enviado
         form_type = request.form.get('form_type')
 
         if form_type == 'update_details':
-            # Lógica para atualizar nome e sobrenome
+            # Lógica para atualizar nome, sobrenome e data de nascimento
             current_user.first_name = request.form.get('first_name')
             current_user.last_name = request.form.get('last_name')
+
+            birth_date_str = request.form.get('birth_date')
+            if birth_date_str:
+                try:
+                    current_user.birth_date = datetime.strptime(birth_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    flash('Formato de data inválido. Use AAAA-MM-DD.', 'danger')
+                    return redirect(url_for('profile'))
+            else:
+                current_user.birth_date = None
+
             db.session.commit()
             flash('Seus dados foram atualizados com sucesso!', 'success')
             return redirect(url_for('profile'))
@@ -168,7 +192,7 @@ def profile():
                 flash('As novas senhas não coincidem.', 'danger')
                 return redirect(url_for('profile'))
 
-            if len(new_password) < 6:  # Adicionando uma verificação simples de tamanho
+            if len(new_password) < 6:
                 flash('A nova senha deve ter pelo menos 6 caracteres.', 'danger')
                 return redirect(url_for('profile'))
 
@@ -177,15 +201,25 @@ def profile():
             flash('Senha alterada com sucesso!', 'success')
             return redirect(url_for('profile'))
 
-    return render_template('profile.html', active_page='profile')
+    # Lógica GET: Busca estatísticas para exibir na página
+    stats = {
+        'total_tickets': Ticket.query.filter_by(user_id=current_user.id).count(),
+        'resolved_tickets': Ticket.query.filter(
+            Ticket.user_id == current_user.id,
+            Ticket.status.in_(['Resolvido', 'Fechado'])
+        ).count()
+    }
+
+    return render_template('profile.html', active_page='profile', stats=stats)
 
 
-# --- FIM DA NOVA ROTA ---
+# --- FIM DA ROTA DE PERFIL ---
 
 
 @app.route('/')
 @login_required
 def index():
+    """Página inicial (Hub) do usuário."""
     hour = datetime.now().hour
     if 5 <= hour < 12:
         greeting = "Bom dia"
@@ -197,16 +231,17 @@ def index():
     # Chamados Abertos e Visíveis
     open_tickets = Ticket.query.filter(
         Ticket.requester == current_user,
-        Ticket.status.in_(['Aberto', 'Em Andamento', 'Pendente']),
+        Ticket.status.in_(['Aberto', 'Em Andamento', 'Pendente', 'Resolvido']),
+        # Resolvido aparece aqui para o usuário fechar
         Ticket.is_hidden == False
     ).order_by(Ticket.updated_at.desc()).all()
 
-    # Chamados Resolvidos
+    # Chamados Fechados (histórico)
     resolved_tickets = Ticket.query.filter(
         Ticket.requester == current_user,
-        Ticket.status.in_(['Resolvido', 'Fechado']),
+        Ticket.status == 'Fechado',
         Ticket.is_hidden == False
-    ).order_by(Ticket.resolved_at.desc()).limit(10).all()  # Mostra só os 10 últimos
+    ).order_by(Ticket.resolved_at.desc()).limit(10).all()
 
     # Chamados Ocultos
     hidden_tickets = Ticket.query.filter(
@@ -225,6 +260,7 @@ def index():
 @app.route('/chat', methods=['POST'])
 @login_required
 def chat():
+    """Endpoint da API do Chatbot."""
     data = request.get_json()
     user_message = data.get('message')
     force_ticket = data.get('force_ticket', False)
@@ -256,7 +292,7 @@ def chat():
                 responsible_user_id=None
             )
             db.session.add(new_ticket)
-            db.session.flush()
+            db.session.flush()  # Pega o ID do novo ticket
 
             initial_comment = TicketComment(
                 description=user_message,
@@ -295,6 +331,7 @@ def get_ticket_or_404(ticket_id):
 @app.route('/ticket/hide/<int:ticket_id>', methods=['POST'])
 @login_required
 def hide_ticket(ticket_id):
+    """Oculta um chamado do hub do usuário."""
     ticket = get_ticket_or_404(ticket_id)
     ticket.is_hidden = True
     db.session.commit()
@@ -305,6 +342,7 @@ def hide_ticket(ticket_id):
 @app.route('/ticket/unhide/<int:ticket_id>', methods=['POST'])
 @login_required
 def unhide_ticket(ticket_id):
+    """Re-exibe um chamado oculto no hub do usuário."""
     ticket = get_ticket_or_404(ticket_id)
     ticket.is_hidden = False
     db.session.commit()
@@ -315,6 +353,7 @@ def unhide_ticket(ticket_id):
 @app.route('/categories', methods=['GET', 'POST'])
 @login_required
 def manage_categories():
+    """Página de gerenciamento de categorias (somente agentes)."""
     # Protegendo a rota - Somente agentes
     if not current_user.is_agent:
         flash('Acesso não autorizado.', 'danger')
@@ -341,12 +380,14 @@ def manage_categories():
 @app.route('/delete_category/<int:category_id>', methods=['POST'])
 @login_required
 def delete_category(category_id):
+    """Remove uma categoria (somente agentes)."""
     # Protegendo a rota - Somente agentes
     if not current_user.is_agent:
         flash('Acesso não autorizado.', 'danger')
         return redirect(url_for('index'))
 
     category_to_delete = Category.query.get_or_404(category_id)
+    # TODO: Adicionar lógica para reatribuir chamados desta categoria
     db.session.delete(category_to_delete)
     db.session.commit()
     flash('Categoria removida com sucesso!', 'success')
@@ -354,6 +395,7 @@ def delete_category(category_id):
 
 
 def get_responsible_for_category(category_name):
+    """Função mock (simulada) para atribuir responsáveis."""
     teams = {
         "Hardware": ["João Silva (Equipe Hardware)", "Marcos (N1)"],
         "Software / Aplicações": ["Equipe de Aplicações", "Ana Pereira (Sistemas)"],
@@ -371,6 +413,7 @@ def get_responsible_for_category(category_name):
 @app.route('/ticket/<int:ticket_id>', methods=['GET', 'POST'])
 @login_required
 def ticket_detail(ticket_id):
+    """Página de detalhes de um chamado."""
     ticket = Ticket.query.get_or_404(ticket_id)
 
     # 1. VERIFICAÇÃO DE "VER" (VIEW)
@@ -397,10 +440,8 @@ def ticket_detail(ticket_id):
         new_comment_text = request.form.get('comment_text')
         file = request.files.get('attachment_file')
 
-        # --- MUDANÇA (Feature 2) ---
         # Verifica se o checkbox "Nota Interna" foi marcado
         is_internal_note = request.form.get('is_internal') == 'on'
-        # --- FIM DA MUDANÇA ---
 
         if new_comment_text:
             if len(new_comment_text) > 5000:
@@ -411,7 +452,7 @@ def ticket_detail(ticket_id):
                 description=new_comment_text,
                 ticket_id=ticket.id,
                 author=current_user,
-                is_internal=is_internal_note  # <-- MUDANÇA (Feature 2)
+                is_internal=is_internal_note  # Salva se o comentário é interno
             )
             db.session.add(new_comment)
 
@@ -450,12 +491,15 @@ def ticket_detail(ticket_id):
 @app.route('/download_attachment/<string:filename>')
 @login_required
 def download_attachment(filename):
+    """Rota segura para baixar anexos."""
+    # TODO: Adicionar verificação se o usuário tem acesso ao ticket
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 
 @app.route('/my_tickets')
 @login_required
 def my_tickets():
+    """Página "Meus Chamados" do usuário."""
     all_tickets = Ticket.query.filter(
         Ticket.requester == current_user,
         Ticket.is_hidden == False
@@ -464,9 +508,12 @@ def my_tickets():
     return render_template('my_tickets.html', tickets=all_tickets, active_page='my_tickets')
 
 
+# --- ROTAS DE AGENTE ---
+
 @app.route('/agent/queue')
 @login_required
 def agent_queue():
+    """Página de "Fila de Chamados" do agente."""
     if not current_user.is_agent:
         flash('Acesso não autorizado.', 'danger')
         return redirect(url_for('index'))
@@ -490,152 +537,113 @@ def agent_queue():
 @app.route('/agent/ticket/assign/<int:ticket_id>', methods=['POST'])
 @login_required
 def agent_assign_ticket(ticket_id):
-    # 1. Proteger a rota: Somente agentes podem fazer isso
+    """Ação do agente para "assumir" um chamado."""
     if not current_user.is_agent:
         flash('Acesso não autorizado.', 'danger')
         return redirect(url_for('index'))
 
-    # 2. Encontrar o chamado
     ticket = Ticket.query.get_or_404(ticket_id)
 
-    # 3. Verificar se o chamado já não foi pego por outro agente
     if ticket.responsible_user_id is not None:
         flash(f'O chamado #{ticket.id} já foi assumido por outro agente.', 'warning')
         return redirect(url_for('agent_queue'))
 
-    # 4. Assumir o chamado!
     ticket.responsible_user_id = current_user.id
-    ticket.status = 'Em Andamento'  # Opcional: Mudar status ao assumir
-    ticket.updated_at = datetime.now(timezone.utc)  # Atualiza o timestamp
-
+    ticket.status = 'Em Andamento'
+    ticket.updated_at = datetime.now(timezone.utc)
     db.session.commit()
 
     flash(f'Você assumiu o chamado #{ticket.id}!', 'success')
-
-    # 5. Redirecionar o agente para a página do chamado que ele acabou de pegar
     return redirect(url_for('ticket_detail', ticket_id=ticket.id))
 
 
 @app.route('/agent/ticket/status/<int:ticket_id>', methods=['POST'])
 @login_required
 def agent_update_status(ticket_id):
-    # 1. Proteger a rota: Somente agentes podem fazer isso
+    """Ação do agente para mudar o status (Resolvido, Pendente, etc.)."""
     if not current_user.is_agent:
         flash('Acesso não autorizado.', 'danger')
         return redirect(url_for('index'))
 
-    # 2. Encontrar o chamado
     ticket = Ticket.query.get_or_404(ticket_id)
 
-    # 3. VERIFICAÇÃO DE POSSE (A NOVA LÓGICA)
-    # Um agente só pode mudar o status de um chamado QUE ESTÁ ATRIBUÍDO A ELE.
     if ticket.responsible_user_id != current_user.id:
         flash(f'Você não pode modificar o chamado #{ticket.id} pois ele não está atribuído a você.', 'danger')
         return redirect(url_for('ticket_detail', ticket_id=ticket.id))
 
-    # 4. Pegar o novo status do formulário
     new_status = request.form.get('new_status')
-
-    # 5. Validar o status
     valid_statuses = ['Aberto', 'Em Andamento', 'Pendente', 'Resolvido', 'Fechado']
+
     if new_status not in valid_statuses:
         flash(f'Status "{new_status}" inválido.', 'danger')
         return redirect(url_for('ticket_detail', ticket_id=ticket.id))
 
-    # 6. Atualizar o chamado
     ticket.status = new_status
-    ticket.updated_at = datetime.now(timezone.utc)  # Atualiza o timestamp
+    ticket.updated_at = datetime.now(timezone.utc)
 
-    # 7. Lógica de Resolução:
-    # Se o status for Resolvido/Fechado, preenche a data de resolução
     if new_status in ['Resolvido', 'Fechado']:
         if ticket.resolved_at is None:
             ticket.resolved_at = datetime.now(timezone.utc)
     else:
-        # Se for reaberto (ex: de 'Pendente' para 'Em Andamento'), limpa a data
         ticket.resolved_at = None
 
     db.session.commit()
     flash(f'Status do chamado #{ticket.id} atualizado para "{new_status}".', 'success')
-
-    # 8. Voltar para a página do chamado
     return redirect(url_for('ticket_detail', ticket_id=ticket.id))
 
 
-# --- NOVA ROTA (Feature 1) ---
 @app.route('/agent/ticket/unassign/<int:ticket_id>', methods=['POST'])
 @login_required
 def agent_unassign_ticket(ticket_id):
-    # 1. Proteger a rota: Somente agentes podem fazer isso
+    """Ação do agente para "devolver" um chamado à fila."""
     if not current_user.is_agent:
         flash('Acesso não autorizado.', 'danger')
         return redirect(url_for('index'))
 
-    # 2. Encontrar o chamado
     ticket = Ticket.query.get_or_404(ticket_id)
 
-    # 3. VERIFICAÇÃO DE POSSE
-    # Só o agente responsável pode devolver o chamado
     if ticket.responsible_user_id != current_user.id:
         flash(f'Você não pode devolver um chamado que não é seu.', 'danger')
         return redirect(url_for('ticket_detail', ticket_id=ticket.id))
 
-    # 4. Devolver o chamado!
     ticket.responsible_user_id = None
-    ticket.status = 'Aberto'  # Devolve para o status inicial
+    ticket.status = 'Aberto'
     ticket.updated_at = datetime.now(timezone.utc)
-
     db.session.commit()
 
     flash(f'Chamado #{ticket.id} devolvido à fila.', 'success')
-
-    # 5. Redirecionar o agente de volta para a fila
     return redirect(url_for('agent_queue'))
 
 
-# --- FIM DA NOVA ROTA ---
-
-
+# --- ROTA DE REVISÃO DO USUÁRIO ---
 @app.route('/user/ticket/review/<int:ticket_id>', methods=['POST'])
 @login_required
 def user_review_ticket(ticket_id):
-    # 1. Pegar o status do formulário ("Fechado" ou "Em Andamento")
+    """Ação do usuário para "Fechar" ou "Reabrir" um chamado resolvido."""
     new_status = request.form.get('new_status')
 
-    # 2. Validação simples
     if new_status not in ['Em Andamento', 'Fechado']:
         flash('Ação inválida.', 'danger')
-        # request.referrer é um truque para mandar o usuário de volta
-        # para a página exata de onde ele veio.
         return redirect(request.referrer or url_for('index'))
 
-    # 3. Pegar o chamado
     ticket = Ticket.query.get_or_404(ticket_id)
 
-    # 4. A VERIFICAÇÃO DE SEGURANÇA MAIS IMPORTANTE:
-    # O usuário logado é o DONO do chamado?
     if ticket.user_id != current_user.id:
         flash('Acesso não autorizado.', 'danger')
         return redirect(url_for('index'))
 
-    # 5. VERIFICAÇÃO DE LÓGICA:
-    # O usuário só pode reabrir/fechar um chamado que está "Resolvido"
     if ticket.status != 'Resolvido':
         flash('Este chamado não está pendente de revisão.', 'warning')
         return redirect(url_for('ticket_detail', ticket_id=ticket.id))
 
-    # Se todas as verificações passarem, atualizamos o chamado:
     ticket.status = new_status
     ticket.updated_at = datetime.now(timezone.utc)
 
     if new_status == 'Em Andamento':
-        # Significa que o usuário REABRIU o chamado
-        ticket.resolved_at = None  # Limpamos a data de resolução
+        ticket.resolved_at = None
         db.session.commit()
         flash(f'Chamado #{ticket.id} foi reaberto com sucesso.', 'success')
     else:
-        # Significa que o usuário FECHOU o chamado
-        # A data 'resolved_at' já estava preenchida, então só salvamos
         db.session.commit()
         flash(f'Chamado #{ticket.id} fechado com sucesso. Obrigado!', 'success')
 
@@ -644,4 +652,3 @@ def user_review_ticket(ticket_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
-
