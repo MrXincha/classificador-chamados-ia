@@ -1,4 +1,19 @@
+Virtual Environment
+
+.venv/
 venv/
-__pycache__/
+*.pyc
+
+Banco de Dados SQLite
+
+project.db
+*.sqlite
+*.sqlite3
+
+Arquivos de cache
+
+pycache/
+
+Arquivos .env (Contém segredos!)
+
 .env
-instance/
